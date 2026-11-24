@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sisyphus // The Ascent</title>
 <link rel="stylesheet" href="style.css">
+<script defer src="audio.js"></script>
 <script defer src="game.js"></script>
 </head>
 <body>
@@ -27,7 +28,7 @@
     </div>
     <p id="notice" role="status"></p>
   </section>
-  <footer><span><kbd>A</kbd> <kbd>D</kbd> Move</span><span><kbd>Space</kbd> Jump</span><span><kbd>Shift</kbd> Hold to boost</span><span><kbd>J</kbd> Hammer</span><span><kbd>R</kbd> Restart</span><span><kbd>Esc</kbd> Pause</span></footer>
+  <footer><span><kbd>A</kbd> <kbd>D</kbd> Move</span><span><kbd>Space</kbd> Jump</span><span><kbd>Shift</kbd> Hold to boost</span><span><kbd>J</kbd> Hammer</span><span><kbd>R</kbd> Restart</span><span><kbd>Esc</kbd> Pause</span><button id="sound" type="button">Mute audio</button></footer>
   <div class="touch" aria-label="Touch controls">
     <button data-key="KeyA" aria-label="Move left">◀</button><button data-key="KeyD" aria-label="Move right">▶</button>
     <button data-key="Space">Jump</button><button data-key="ShiftLeft">Boost</button><button data-key="KeyJ">Hammer</button>

@@ -2,6 +2,12 @@
 
 ## 2026-11-24
 
+### Terrain, momentum, and audio
+
+- Reshaped the uphill terraces with steep ramps, flat landings, and gaps of different widths. Added Roman arcades and neon conduits between temples.
+- Added acceleration, coasting, and downhill sliding. Horizontal momentum carries through jumps.
+- Added a looping synth score and sound effects for movement, combat, and milestones, with a mute control for both.
+
 ### Project documentation
 
 - Added a README with launch instructions, controls, gameplay, and a source overview.

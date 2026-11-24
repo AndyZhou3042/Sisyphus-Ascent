@@ -10,11 +10,15 @@ const button = byId("start");
 const keys = new Set();
 const pressed = new Set();
 const geometry = [
-  [0, 360, 1240, 1150], [440, 760, 1100, 1005],
-  [860, 1170, 940, 848], [1270, 1595, 790, 700],
-  [1705, 2050, 638, 535], [2170, 2490, 476, 374],
-  [2610, 2940, 311, 224], [3030, 3470, 170, 90],
-];
+  [[0, 1240], [98, 1240], [235, 1170], [300, 1150], [360, 1150]],
+  [[425, 1100], [515, 1074], [657, 1074], [746, 1005], [780, 1005]],
+  [[860, 940], [939, 901], [1028, 879], [1094, 848], [1170, 848]],
+  [[1270, 790], [1350, 790], [1440, 761], [1545, 700], [1618, 700]],
+  [[1705, 638], [1811, 638], [1902, 571], [1986, 535], [2060, 535]],
+  [[2170, 476], [2260, 422], [2370, 422], [2450, 374], [2508, 374]],
+  [[2610, 311], [2686, 251], [2750, 251], [2864, 224], [2950, 224]],
+  [[3030, 170], [3110, 170], [3260, 105], [3332, 90], [3470, 90]],
+].map(points => ({points, left: points[0][0], right: points.at(-1)[0]}));
 const placements = [
   [235, "melee", 0], [635, "projectile", 1], [990, "flying", 2],
   [1420, "melee", 3], [1940, "projectile", 4], [2020, "flying", 4],
@@ -27,7 +31,16 @@ const maxArmor = 5;
 const camera = {x: 0, y: 0};
 let player, enemies, shots, sparks, checkpoint, state, stageTime, noticeTime;
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
-const ground = ([a, b, low, high], x) => low + (high - low) * clamp((x - a) / (b - a), 0, 1);
+function ground({points}, x) {
+  for (let i = 1; i < points.length; i++) {
+    const [right, top] = points[i];
+    if (x <= right) {
+      const [left, bottom] = points[i - 1];
+      return bottom + (top - bottom) * Math.max(0, (x - left) / (right - left));
+    }
+  }
+  return points.at(-1)[1];
+}
 
 function spawn(index) {
   const {x, platform} = checkpoints[index];
@@ -52,6 +65,7 @@ function snapCamera() {
 
 function showScreen(next, title, description, action) {
   state = next;
+  gameAudio.setPlaying(false);
   byId("headline").textContent = title;
   byId("brief").textContent = description;
   button.textContent = action;
@@ -64,21 +78,33 @@ function showScreen(next, title, description, action) {
 function begin() {
   if (state !== "paused") spawn(state === "lost" ? checkpoint : 0);
   state = "playing";
+  gameAudio.unlock();
+  gameAudio.setPlaying(true);
   overlay.hidden = true;
   button.blur();
   keys.clear();
   pressed.clear();
 }
 button.addEventListener("click", begin);
-const controls = new Set(["KeyA", "KeyD", "ArrowLeft", "ArrowRight", "Space", "ShiftLeft", "ShiftRight", "KeyJ", "KeyR", "Escape"]);
+const soundButton = byId("sound");
+function toggleSound() {
+  const muted = gameAudio.toggleMute();
+  soundButton.textContent = muted ? "Unmute audio" : "Mute audio";
+}
+soundButton.addEventListener("click", toggleSound);
+const controls = new Set(["KeyA", "KeyD", "ArrowLeft", "ArrowRight", "Space", "ShiftLeft", "ShiftRight", "KeyJ", "KeyR", "KeyM", "Escape"]);
 function press(code) {
   if (!keys.has(code)) pressed.add(code);
   keys.add(code);
 }
 window.addEventListener("keydown", event => {
   if (!controls.has(event.code)) return;
-  if (!overlay.hidden && event.code === "Space") return;
+  if (event.code === "Space" && (!overlay.hidden || document.activeElement === soundButton)) return;
   event.preventDefault();
+  if (event.code === "KeyM") {
+    if (!event.repeat) toggleSound();
+    return;
+  }
   if (event.repeat && !keys.has(event.code)) return;
   if (event.code === "Escape" && !event.repeat) {
     if (state === "playing") showScreen("paused", "Paused", "Resume the climb when you’re ready.", "Resume");
@@ -120,6 +146,7 @@ function burst(x, y, color, count) {
 function damage(x) {
   if (player.invulnerable || state !== "playing") return;
   player.armor--;
+  gameAudio.effect("hurt");
   player.invulnerable = .9;
   player.platform = -1;
   player.vy = -235;
@@ -129,6 +156,7 @@ function damage(x) {
 }
 
 function lose() {
+  gameAudio.effect("fall");
   showScreen("lost", "Return to the climb",
     checkpoint ? "Restart from the checkpoint." : "Restart at the foot of the ruins.", "Try again");
 }
@@ -136,9 +164,12 @@ function lose() {
 function hammer() {
   player.swing = .24;
   player.cooldown = .36;
+  gameAudio.effect("swing");
+  let hit = false;
   for (const enemy of enemies) {
     const dx = (enemy.x - player.x) * player.facing;
     if (enemy.hp && dx >= -15 && dx <= 92 && Math.abs(enemy.y - player.y) < 71) {
+      hit = true;
       enemy.hp--;
       enemy.flash = .16;
       enemy.windup = 0;
@@ -149,29 +180,46 @@ function hammer() {
   shots = shots.filter(shot => {
     const dx = (shot.x - player.x) * player.facing;
     if (dx < -15 || dx > 92 || Math.abs(shot.y - player.y + 24) > 35) return true;
+    hit = true;
     burst(shot.x, shot.y, "#ffe4a4", 7);
     return false;
   });
+  if (hit) gameAudio.effect("impact");
 }
 
 function move(dt) {
   const p = player;
   const direction = Number(keys.has("KeyD") || keys.has("ArrowRight")) - Number(keys.has("KeyA") || keys.has("ArrowLeft"));
   if (direction) p.facing = direction;
-  p.vx += (direction * 265 - p.vx) * Math.min(1, 13 * dt);
   let grounded = p.platform >= 0;
+  if (grounded) {
+    const surface = geometry[p.platform];
+    const downhill = (ground(surface, p.x + 4) - ground(surface, p.x - 4)) / 8;
+    const acceleration = direction ? 860 : 0;
+    const drag = direction ? 3 : 4.5;
+    p.vx += (direction * acceleration + downhill * 440 - p.vx * drag) * dt;
+    if (!direction && p.vx < -22 && downhill < -.18 && Math.random() < dt * 12) {
+      burst(p.x, p.y - 2, "#c59a91", 1);
+    }
+    if (!direction && Math.abs(p.vx) < .5) p.vx = 0;
+  } else if (direction) {
+    p.vx += (direction * 285 - p.vx) * 2.4 * dt;
+  }
   if (grounded && pressed.has("Space")) {
     grounded = false;
     p.platform = -1;
     p.vy = -425;
+    gameAudio.effect("jump");
     burst(p.x, p.y, "#8a7b9d", 5);
   }
   const oldX = p.x;
   const oldY = p.y;
-  p.x = clamp(p.x + p.vx * dt, 14, 3450);
+  const nextX = p.x + p.vx * dt;
+  p.x = clamp(nextX, 14, 3450);
+  if (p.x !== nextX) p.vx = 0;
   if (grounded) {
     const surface = geometry[p.platform];
-    if (p.x >= surface[0] && p.x <= surface[1]) {
+    if (p.x >= surface.left && p.x <= surface.right) {
       p.y = ground(surface, p.x);
       p.fuel = Math.min(100, p.fuel + 150 * dt);
     } else {
@@ -180,9 +228,11 @@ function move(dt) {
       grounded = false;
     }
   }
+  const wasBoosting = p.boosting;
   p.boosting = !grounded && p.fuel > 0 && (keys.has("ShiftLeft") || keys.has("ShiftRight"));
   if (!grounded) {
     if (p.boosting) {
+      if (!wasBoosting) gameAudio.effect("boost");
       p.fuel = Math.max(0, p.fuel - 87 * dt);
       p.vy = Math.max(-365, p.vy - 610 * dt);
       if (Math.random() < dt * 40) burst(p.x - p.facing * 11, p.y - 18, "#61f9ed", 2);
@@ -191,11 +241,13 @@ function move(dt) {
     }
     p.y += p.vy * dt;
     for (const [index, surface] of geometry.entries()) {
-      if (p.x < surface[0] || p.x > surface[1]) continue;
+      if (p.x < surface.left || p.x > surface.right) continue;
       const height = ground(surface, p.x);
       if (oldY <= ground(surface, oldX) + .01 && p.y >= height) {
+        if (p.vy > 145) gameAudio.effect("land");
         p.y = height;
         p.vy = 0;
+        p.boosting = false;
         p.platform = index;
         break;
       }
@@ -228,7 +280,7 @@ function updateEnemies(dt) {
       } else if (Math.abs(dx) < 46 && Math.abs(dy) < 45 && e.timer <= 0) {
         e.windup = .34;
       } else if (Math.abs(dx) < 225 && Math.abs(dx) > 34) {
-        const [left, right] = geometry[e.platform];
+        const {left, right} = geometry[e.platform];
         e.x = clamp(e.x + direction * 114 * dt, left + 20, right - 20);
         e.y = ground(geometry[e.platform], e.x);
       }
@@ -241,6 +293,7 @@ function updateEnemies(dt) {
           e.windup = 0;
           e.timer = 1.5;
           const angle = Math.atan2(dy + 9, dx);
+          gameAudio.effect("shot");
           shots.push({x: e.x, y: e.y - 30, vx: Math.cos(angle) * 330, vy: Math.sin(angle) * 330, life: 2});
         }
       }
@@ -261,6 +314,7 @@ function update(dt) {
     checkpoint = 1;
     player.armor = maxArmor;
     noticeTime = 2.5;
+    gameAudio.effect("checkpoint");
   }
   if (player.platform >= 0) player.lastGround = player.y;
   updateEnemies(dt);
@@ -272,7 +326,7 @@ function update(dt) {
       damage(s.x);
       return false;
     }
-    return s.life > 0 && !geometry.some(g => s.x >= g[0] && s.x <= g[1] && s.y >= ground(g, s.x));
+    return s.life > 0 && !geometry.some(g => s.x >= g.left && s.x <= g.right && s.y >= ground(g, s.x));
   });
   sparks = sparks.filter(s => {
     s.x += s.vx * dt;
@@ -284,6 +338,7 @@ function update(dt) {
   if (state === "playing") {
     if (player.y > player.lastGround + 410) lose();
     else if (player.x >= summit && player.platform === 7) {
+      gameAudio.effect("summit");
       showScreen("won", "Summit reached", "Sisyphus has cleared the ascent.", "Climb again");
     }
   }
@@ -403,19 +458,53 @@ function temple(x, y, size, goal) {
   ctx.restore();
 }
 
+function arcade(x, y, bays) {
+  ctx.save();
+  ctx.translate(x, y);
+  for (let i = 0; i < bays; i++) {
+    const left = i * 48;
+    rect("#523952", left, -70, 48, 88);
+    ctx.fillStyle = "#21192e";
+    ctx.beginPath();
+    ctx.arc(left + 24, -34, 15, Math.PI, 0);
+    ctx.lineTo(left + 39, 18);
+    ctx.lineTo(left + 9, 18);
+    ctx.closePath();
+    ctx.fill();
+    rect("#b48783", left, -67, 5, 80);
+  }
+  rect("#e990a3", 0, -70, bays * 48, 3);
+  ctx.restore();
+}
+
+function conduits(x, y) {
+  for (let i = 0; i < 3; i++) {
+    const offset = i * 39;
+    const height = 62 + i * 22;
+    column(x + offset, y - i * 10, height, 25);
+    rect("#193544", x + offset + 8, y - i * 10 - height + 12, 9, height - 22);
+    rect("#62e4db", x + offset + 11, y - i * 10 - height + 12, 2, height - 22);
+  }
+}
+
 function terrain() {
   for (const [index, g] of geometry.entries()) {
-    const [a, b, y, z] = g;
+    const {left: a, right: b, points} = g;
     if (b < camera.x || a > camera.x + W) continue;
+    const y = points[0][1];
+    const z = points.at(-1)[1];
+    const center = ground(g, a + 146);
     if (index === 7) temple(3252, ground(g, 3335) + 4, 1.4, true);
+    else if (index === 1 || index === 5) arcade(a + 48, center + 12, 4);
+    else if (index === 2 || index === 6) conduits(a + 98, center + 13);
     else {
-      temple(a + 43, ground(g, a + 120) + 35, .84, false);
-      column(b - 52, z + 19, 97, 18);
+      temple(a + 43, center + 28, index === 4 ? 1.05 : .84, false);
+      column(b - 52, z + 9, index === 3 ? 124 : 97, 18);
     }
-    polygon("#170f23", [[a, y], [b, z], [b - 21, z + 89], [b - 70, z + 154], [b - 126, z + 257], [a + 45, y + 299], [a + 13, y + 133]]);
-    polygon("#483045", [[a, y], [b, z], [b - 6, z + 23], [a + 4, y + 24]]);
-    line("#f1ae91", 3, [a, y], [b, z]);
-    line(index % 2 ? "#e969a5" : "#5fe4df", 2, [a + 6, y + 10], [b - 6, z + 12]);
+    polygon("#170f23", [...points, [b - 21, z + 89], [b - 70, z + 154], [b - 126, z + 257], [a + 45, y + 299], [a + 13, y + 133]]);
+    polygon("#483045", [...points, ...points.map(([x, top]) => [x, top + 23]).reverse()]);
+    line("#f1ae91", 3, ...points);
+    line(index % 2 ? "#e969a5" : "#5fe4df", 2, ...points.map(([x, top]) => [x, top + 11]));
     for (let x = a + 18; x < b - 28; x += 27) {
       const top = ground(g, x);
       line("#77516a", 2, [x, top + 18], [x, top + 35], [x + 11, top + 33], [x + 11, top + 25], [x + 5, top + 26]);
@@ -532,6 +621,7 @@ function frame(now) {
     pressed.clear();
     accumulator -= step;
   }
+  gameAudio.tick();
   draw();
   requestAnimationFrame(frame);
 }

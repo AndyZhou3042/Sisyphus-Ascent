@@ -14,8 +14,11 @@ Open `index.html` in a browser and select **Begin ascent**. The game runs locall
 | Swing the sledgehammer | J |
 | Restart from the beginning | R |
 | Pause or resume | Esc |
+| Mute or unmute music and effects | M or the audio button |
 
 Touch controls appear on devices with a touch pointer.
+
+Build up speed before jumping. Sisyphus coasts after you release the controls, then slides downhill on slopes. Flat landings let you stop and line up the next jump. Music starts when you select **Begin ascent**.
 
 Leap across seven gaps and get past melee guards, projectile turrets, and flying drones. Boost fuel recharges on the ground. The midpoint checkpoint restores armor and serves as your retry point if you fall or lose all your armor. Reach the summit gate to finish the level.
 
@@ -24,7 +27,8 @@ Leap across seven gaps and get past melee guards, projectile turrets, and flying
 - `index.html` contains the game canvas, menus, HUD, and controls.
 - `style.css` styles the interface and touch controls.
 - `game.js` defines the level, physics, enemies, combat, and canvas rendering.
+- `audio.js` synthesizes the music and sound effects using the Web Audio API.
 
-Run `node --check game.js` for a syntax check if Node.js is installed. Open the game in a browser to verify gameplay changes.
+Run `node --check game.js` and `node --check audio.js` for syntax checks if Node.js is installed. Open the game in a browser to verify gameplay changes.
 
 See [CHANGELOG.md](CHANGELOG.md) for the development history.

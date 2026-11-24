@@ -26,3 +26,8 @@ kbd{color:var(--gold);background:#201b2a;border:1px solid #504058;padding:.14rem
 .touch{display:none}
 @media(pointer:coarse){.touch{display:flex;gap:.45rem}}
 @media(max-width:540px){.hud{font-size:.7rem;gap:.25rem;padding:.35rem}.panel p{font-size:.8rem}footer{gap:.45rem .8rem}}
+footer{align-items:center}
+#sound{font-size:.875rem;padding:.25rem .55rem}
+@media(min-width:760px) and (min-height:480px){
+  main{width:min(1120px,96vw,calc((100svh - 7.5rem) * 16 / 9))}
+}

@@ -10,7 +10,7 @@ Open `index.html` in a browser and select **Begin ascent**. The game runs locall
 | --- | --- |
 | Move | A / D or Left / Right |
 | Jump | Space |
-| Rocket boost | Hold Shift in midair |
+| Rocket jump | Tap Shift while grounded |
 | Swing the sledgehammer | J |
 | Restart from the beginning | R |
 | Pause or resume | Esc |
@@ -18,9 +18,9 @@ Open `index.html` in a browser and select **Begin ascent**. The game runs locall
 
 Touch controls appear on devices with a touch pointer.
 
-Build up speed before jumping. Sisyphus coasts after you release the controls, then slides downhill on slopes. Flat landings let you stop and line up the next jump. Music starts when you select **Begin ascent**.
+Build up speed before jumping. Every terrace slopes downhill behind you, so releasing the controls makes Sisyphus coast, then slide off the lower edge. Tap Shift on the ground for a single forward and upward rocket launch. Running before launching carries you farther. Use Space for a shorter jump. Music starts when you select **Begin ascent**.
 
-Leap across seven gaps and get past melee guards, projectile turrets, and flying drones. Boost fuel recharges on the ground. The midpoint checkpoint restores armor and serves as your retry point if you fall or lose all your armor. Reach the summit gate to finish the level.
+Leap across seven gaps and get past melee guards, projectile turrets, and flying drones. The midpoint checkpoint restores armor and serves as your retry point if you fall or lose all your armor. Reach the summit gate to finish the level.
 
 ## Development
 

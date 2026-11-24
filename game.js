@@ -10,14 +10,14 @@ const button = byId("start");
 const keys = new Set();
 const pressed = new Set();
 const geometry = [
-  [[0, 1240], [98, 1240], [235, 1170], [300, 1150], [360, 1150]],
-  [[425, 1100], [515, 1074], [657, 1074], [746, 1005], [780, 1005]],
-  [[860, 940], [939, 901], [1028, 879], [1094, 848], [1170, 848]],
-  [[1270, 790], [1350, 790], [1440, 761], [1545, 700], [1618, 700]],
-  [[1705, 638], [1811, 638], [1902, 571], [1986, 535], [2060, 535]],
-  [[2170, 476], [2260, 422], [2370, 422], [2450, 374], [2508, 374]],
-  [[2610, 311], [2686, 251], [2750, 251], [2864, 224], [2950, 224]],
-  [[3030, 170], [3110, 170], [3260, 105], [3332, 90], [3470, 90]],
+  [[0, 1240], [98, 1217], [235, 1170], [300, 1136], [360, 1120]],
+  [[425, 1100], [515, 1077], [657, 1047], [746, 1002], [780, 993]],
+  [[860, 940], [939, 901], [1028, 879], [1094, 865], [1170, 848]],
+  [[1270, 790], [1350, 770], [1440, 749], [1545, 717], [1618, 700]],
+  [[1705, 638], [1811, 614], [1902, 571], [1986, 551], [2060, 535]],
+  [[2170, 476], [2260, 432], [2370, 411], [2450, 389], [2508, 374]],
+  [[2610, 311], [2686, 268], [2750, 251], [2864, 234], [2950, 224]],
+  [[3030, 170], [3110, 151], [3260, 105], [3332, 88], [3470, 63]],
 ].map(points => ({points, left: points[0][0], right: points.at(-1)[0]}));
 const placements = [
   [235, "melee", 0], [635, "projectile", 1], [990, "flying", 2],
@@ -45,7 +45,7 @@ function ground({points}, x) {
 function spawn(index) {
   const {x, platform} = checkpoints[index];
   player = {x, y: ground(geometry[platform], x), vy: 0, vx: 0, platform, facing: 1,
-    lastGround: ground(geometry[platform], x), armor: maxArmor, fuel: 100, invulnerable: 0, swing: 0, cooldown: 0, boosting: false};
+    lastGround: ground(geometry[platform], x), armor: maxArmor, invulnerable: 0, swing: 0, cooldown: 0, rocketFlash: 0};
   enemies = placements.map(([x, type, platform]) => ({x, home: x, type, platform,
     y: ground(geometry[platform], x) - (type === "flying" ? 105 : 0),
     hp: type === "flying" ? 1 : 2, timer: .45, phase: x, windup: 0, flash: 0}));
@@ -130,7 +130,7 @@ document.querySelectorAll("[data-key]").forEach(control => {
 
 function updateHud() {
   byId("armor").textContent = "◆".repeat(player.armor) + "◇".repeat(maxArmor - player.armor);
-  byId("fuel").value = player.fuel;
+  byId("rocket").textContent = player.platform >= 0 ? "READY" : "AIRBORNE";
   byId("ascent").textContent = Math.floor(clamp((player.x - 60) / (summit - 60), 0, 1) * 100) + "%";
   byId("notice").textContent = noticeTime > 0 ? "CHECKPOINT ACTIVE · ARMOR RESTORED" : "";
 }
@@ -201,44 +201,41 @@ function move(dt) {
     if (!direction && p.vx < -22 && downhill < -.18 && Math.random() < dt * 12) {
       burst(p.x, p.y - 2, "#c59a91", 1);
     }
-    if (!direction && Math.abs(p.vx) < .5) p.vx = 0;
   } else if (direction) {
     p.vx += (direction * 285 - p.vx) * 2.4 * dt;
   }
-  if (grounded && pressed.has("Space")) {
+  const rocketJump = pressed.has("ShiftLeft") || pressed.has("ShiftRight");
+  if (grounded && (rocketJump || pressed.has("Space"))) {
     grounded = false;
     p.platform = -1;
-    p.vy = -425;
-    gameAudio.effect("jump");
-    burst(p.x, p.y, "#8a7b9d", 5);
+    if (rocketJump) {
+      const launchSpeed = 270 + Math.max(0, p.vx * p.facing) * .55;
+      p.vx = launchSpeed * p.facing;
+      p.vy = -555;
+      p.rocketFlash = .16;
+      gameAudio.effect("boost");
+      burst(p.x - p.facing * 14, p.y - 18, "#61f9ed", 18);
+    } else {
+      p.vy = -425;
+      gameAudio.effect("jump");
+      burst(p.x, p.y, "#8a7b9d", 5);
+    }
   }
   const oldX = p.x;
   const oldY = p.y;
-  const nextX = p.x + p.vx * dt;
-  p.x = clamp(nextX, 14, 3450);
-  if (p.x !== nextX) p.vx = 0;
+  p.x += p.vx * dt;
   if (grounded) {
     const surface = geometry[p.platform];
     if (p.x >= surface.left && p.x <= surface.right) {
       p.y = ground(surface, p.x);
-      p.fuel = Math.min(100, p.fuel + 150 * dt);
     } else {
       p.platform = -1;
       p.vy = 0;
       grounded = false;
     }
   }
-  const wasBoosting = p.boosting;
-  p.boosting = !grounded && p.fuel > 0 && (keys.has("ShiftLeft") || keys.has("ShiftRight"));
   if (!grounded) {
-    if (p.boosting) {
-      if (!wasBoosting) gameAudio.effect("boost");
-      p.fuel = Math.max(0, p.fuel - 87 * dt);
-      p.vy = Math.max(-365, p.vy - 610 * dt);
-      if (Math.random() < dt * 40) burst(p.x - p.facing * 11, p.y - 18, "#61f9ed", 2);
-    } else {
-      p.vy += 1040 * dt;
-    }
+    p.vy += 1040 * dt;
     p.y += p.vy * dt;
     for (const [index, surface] of geometry.entries()) {
       if (p.x < surface.left || p.x > surface.right) continue;
@@ -247,7 +244,7 @@ function move(dt) {
         if (p.vy > 145) gameAudio.effect("land");
         p.y = height;
         p.vy = 0;
-        p.boosting = false;
+        p.rocketFlash = 0;
         p.platform = index;
         break;
       }
@@ -307,7 +304,7 @@ function update(dt) {
   if (pressed.has("KeyR")) spawn(0);
   stageTime += dt;
   noticeTime -= dt;
-  for (const timer of ["invulnerable", "swing", "cooldown"]) player[timer] = Math.max(0, player[timer] - dt);
+  for (const timer of ["invulnerable", "swing", "cooldown", "rocketFlash"]) player[timer] = Math.max(0, player[timer] - dt);
   move(dt);
   if (pressed.has("KeyJ") && !player.cooldown) hammer();
   if (player.platform === 4 && !checkpoint) {
@@ -559,8 +556,8 @@ function drawPlayer() {
   ctx.scale(p.facing, 1);
   if (p.invulnerable && Math.floor(p.invulnerable * 22) % 2) ctx.globalAlpha = .46;
   const pace = p.platform >= 0 ? Math.sin(stageTime * 16) * Math.abs(p.vx) / 24 : 6;
-  if (p.boosting) {
-    polygon("#29dbcbbb", [[-23, -28], [-13, -26], [-15 - random(stageTime) * 13, 25]]);
+  if (p.rocketFlash > 0) {
+    polygon("#29dbcbbb", [[-23, -28], [-13, -26], [-22 - p.rocketFlash * 125, 12 + p.rocketFlash * 110]]);
     polygon("#d8fff4", [[-21, -27], [-15, -27], [-18, 5]]);
   }
   polygon("#893553", [[-10, -37], [-23, -31], [-33, -22], [-29, -17], [-8, -27]]);

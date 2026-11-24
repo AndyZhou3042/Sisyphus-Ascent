@@ -15,23 +15,23 @@
     <canvas width="960" height="540" aria-label="Climb the ruins to the summit gate"></canvas>
     <div class="hud" aria-hidden="true">
       <div>ARMOR <strong id="armor"></strong></div>
-      <div>BOOST <meter id="fuel" min="0" max="100" value="100"></meter></div>
+      <div>ROCKET <strong id="rocket"></strong></div>
       <div>ASCENT <strong id="ascent">0%</strong></div>
     </div>
     <div id="overlay">
       <div class="panel">
         <p class="eyebrow" id="eyebrow">TARTARUS / SUMMIT GATE</p>
         <h2 id="headline">The Ascent</h2>
-        <p id="brief">Climb the neon ruins. Break through the gate’s guards.</p>
+        <p id="brief">Keep moving or slide off the ruins. Press Shift on the ground to rocket jump.</p>
         <button id="start" autofocus>Begin ascent</button>
       </div>
     </div>
     <p id="notice" role="status"></p>
   </section>
-  <footer><span><kbd>A</kbd> <kbd>D</kbd> Move</span><span><kbd>Space</kbd> Jump</span><span><kbd>Shift</kbd> Hold to boost</span><span><kbd>J</kbd> Hammer</span><span><kbd>R</kbd> Restart</span><span><kbd>Esc</kbd> Pause</span><button id="sound" type="button">Mute audio</button></footer>
+  <footer><span><kbd>A</kbd> <kbd>D</kbd> Move</span><span><kbd>Space</kbd> Jump</span><span><kbd>Shift</kbd> Rocket jump</span><span><kbd>J</kbd> Hammer</span><span><kbd>R</kbd> Restart</span><span><kbd>Esc</kbd> Pause</span><button id="sound" type="button">Mute audio</button></footer>
   <div class="touch" aria-label="Touch controls">
     <button data-key="KeyA" aria-label="Move left">◀</button><button data-key="KeyD" aria-label="Move right">▶</button>
-    <button data-key="Space">Jump</button><button data-key="ShiftLeft">Boost</button><button data-key="KeyJ">Hammer</button>
+    <button data-key="Space">Jump</button><button data-key="ShiftLeft">Rocket</button><button data-key="KeyJ">Hammer</button>
   </div>
 </main>
 </body>

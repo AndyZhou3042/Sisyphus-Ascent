@@ -2,6 +2,11 @@
 
 ## 2026-11-24
 
+### Unbroken slopes and rocket jumps
+
+- Removed flat landings and opened the lower edge of the first terrace, so every terrace can send an idle player sliding into a fall.
+- Replaced sustained midair thrust with a single forward and upward rocket launch from the ground. Updated the controls, rocket status, and launch effects.
+
 ### Terrain, momentum, and audio
 
 - Reshaped the uphill terraces with steep ramps, flat landings, and gaps of different widths. Added Roman arcades and neon conduits between temples.

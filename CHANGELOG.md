@@ -2,6 +2,12 @@
 
 ## 2026-11-24
 
+### Lethal combat and traps
+
+- Added fixed spikes and timed arc traps with an amber warning before activation.
+- Made every enemy attack lethal and every sledgehammer hit kill its target. Preserved the ability to swat incoming projectiles.
+- Replaced armor with a session death counter and added a cause of death to the retry screen.
+
 ### Unbroken slopes and rocket jumps
 
 - Removed flat landings and opened the lower edge of the first terrace, so every terrace can send an idle player sliding into a fall.

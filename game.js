@@ -25,9 +25,19 @@ const placements = [
   [2320, "melee", 5], [2790, "projectile", 6], [2850, "flying", 6],
   [3170, "melee", 7],
 ];
+const traps = [
+  {platform: 0, left: 257, right: 299},
+  {platform: 1, left: 579, right: 632, phase: .55},
+  {platform: 2, left: 1047, right: 1095},
+  {platform: 3, left: 1480, right: 1537, phase: 1.15},
+  {platform: 4, left: 1840, right: 1890},
+  {platform: 5, left: 2310, right: 2375, phase: 2.05},
+  {platform: 6, left: 2781, right: 2830},
+  {platform: 7, left: 3242, right: 3308, phase: .8},
+];
 const checkpoints = [{x: 60, platform: 0}, {x: 1735, platform: 4}];
 const summit = 3370;
-const maxArmor = 5;
+let deaths = 0;
 const camera = {x: 0, y: 0};
 let player, enemies, shots, sparks, checkpoint, state, stageTime, noticeTime;
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -45,10 +55,10 @@ function ground({points}, x) {
 function spawn(index) {
   const {x, platform} = checkpoints[index];
   player = {x, y: ground(geometry[platform], x), vy: 0, vx: 0, platform, facing: 1,
-    lastGround: ground(geometry[platform], x), armor: maxArmor, invulnerable: 0, swing: 0, cooldown: 0, rocketFlash: 0};
+    lastGround: ground(geometry[platform], x), swing: 0, cooldown: 0, rocketFlash: 0};
   enemies = placements.map(([x, type, platform]) => ({x, home: x, type, platform,
     y: ground(geometry[platform], x) - (type === "flying" ? 105 : 0),
-    hp: type === "flying" ? 1 : 2, timer: .45, phase: x, windup: 0, flash: 0}));
+    alive: true, timer: .45, phase: x, windup: 0}));
   shots = [];
   sparks = [];
   checkpoint = index;
@@ -129,10 +139,10 @@ document.querySelectorAll("[data-key]").forEach(control => {
 });
 
 function updateHud() {
-  byId("armor").textContent = "◆".repeat(player.armor) + "◇".repeat(maxArmor - player.armor);
+  byId("deaths").textContent = deaths;
   byId("rocket").textContent = player.platform >= 0 ? "READY" : "AIRBORNE";
   byId("ascent").textContent = Math.floor(clamp((player.x - 60) / (summit - 60), 0, 1) * 100) + "%";
-  byId("notice").textContent = noticeTime > 0 ? "CHECKPOINT ACTIVE · ARMOR RESTORED" : "";
+  byId("notice").textContent = noticeTime > 0 ? "CHECKPOINT ACTIVE" : "";
 }
 
 function burst(x, y, color, count) {
@@ -143,22 +153,35 @@ function burst(x, y, color, count) {
   }
 }
 
-function damage(x) {
-  if (player.invulnerable || state !== "playing") return;
-  player.armor--;
-  gameAudio.effect("hurt");
-  player.invulnerable = .9;
-  player.platform = -1;
-  player.vy = -235;
-  player.vx = player.x >= x ? 230 : -230;
-  burst(player.x, player.y - 23, "#ff657e", 13);
-  if (!player.armor) lose();
+function lose(cause) {
+  if (state !== "playing") return;
+  deaths++;
+  if (cause === "You fell into Tartarus.") {
+    gameAudio.effect("fall");
+  } else {
+    gameAudio.effect("hurt");
+    burst(player.x, player.y - 23, "#ff657e", 18);
+  }
+  const retryPoint = checkpoint ? "Retry from the checkpoint." : "Retry from the foot of the ruins.";
+  showScreen("lost", "Ascend again", cause + " " + retryPoint, "Try again");
 }
 
-function lose() {
-  gameAudio.effect("fall");
-  showScreen("lost", "Return to the climb",
-    checkpoint ? "Restart from the checkpoint." : "Restart at the foot of the ruins.", "Try again");
+function trapPhase(trap) {
+  if (trap.phase === undefined) return "spikes";
+  const time = (stageTime + trap.phase) % 2.5;
+  if (time >= 1.65) return "live";
+  return time >= 1.2 ? "warning" : "idle";
+}
+
+function checkTraps() {
+  for (const trap of traps) {
+    if (player.x + 9 <= trap.left || player.x - 9 >= trap.right) continue;
+    const phase = trapPhase(trap);
+    const clearance = ground(geometry[trap.platform], player.x) - player.y;
+    if (clearance < -48) continue;
+    if (phase === "spikes" && clearance < 25) lose("You hit the spikes.");
+    if (phase === "live" && clearance < 82) lose("An arc trap caught you.");
+  }
 }
 
 function hammer() {
@@ -168,13 +191,10 @@ function hammer() {
   let hit = false;
   for (const enemy of enemies) {
     const dx = (enemy.x - player.x) * player.facing;
-    if (enemy.hp && dx >= -15 && dx <= 92 && Math.abs(enemy.y - player.y) < 71) {
+    if (enemy.alive && dx >= -15 && dx <= 92 && Math.abs(enemy.y - player.y) < 71) {
       hit = true;
-      enemy.hp--;
-      enemy.flash = .16;
-      enemy.windup = 0;
-      enemy.timer = .65;
-      burst(enemy.x, enemy.y - 17, "#ffd38c", enemy.hp ? 9 : 20);
+      enemy.alive = false;
+      burst(enemy.x, enemy.y - 17, "#ffd38c", 20);
     }
   }
   shots = shots.filter(shot => {
@@ -254,8 +274,7 @@ function move(dt) {
 
 function updateEnemies(dt) {
   for (const e of enemies) {
-    if (!e.hp) continue;
-    e.flash = Math.max(0, e.flash - dt);
+    if (!e.alive) continue;
     const dx = player.x - e.x;
     const dy = player.y - e.y;
     const direction = Math.sign(dx);
@@ -266,12 +285,12 @@ function updateEnemies(dt) {
       const height = ground(geometry[e.platform], e.x);
       const targetY = Math.abs(dx) < 220 ? clamp(player.y - 27, height - 175, height - 38) : height - 105;
       e.y += (targetY + Math.sin(stageTime * 4 + e.phase) * 14 - e.y) * dt * 2.6;
-      if (Math.abs(dx) < 25 && Math.abs(dy - 12) < 31) damage(e.x);
+      if (Math.abs(dx) < 25 && Math.abs(dy - 12) < 31) lose("A flying drone struck you.");
     } else if (e.type === "melee") {
       if (e.windup > 0) {
         e.windup -= dt;
         if (e.windup <= 0) {
-          if (Math.abs(dx) < 58 && Math.abs(dy) < 45) damage(e.x);
+          if (Math.abs(dx) < 58 && Math.abs(dy) < 45) lose("A melee guard struck you.");
           e.timer = .65;
         }
       } else if (Math.abs(dx) < 46 && Math.abs(dy) < 45 && e.timer <= 0) {
@@ -304,23 +323,23 @@ function update(dt) {
   if (pressed.has("KeyR")) spawn(0);
   stageTime += dt;
   noticeTime -= dt;
-  for (const timer of ["invulnerable", "swing", "cooldown", "rocketFlash"]) player[timer] = Math.max(0, player[timer] - dt);
+  for (const timer of ["swing", "cooldown", "rocketFlash"]) player[timer] = Math.max(0, player[timer] - dt);
   move(dt);
   if (pressed.has("KeyJ") && !player.cooldown) hammer();
   if (player.platform === 4 && !checkpoint) {
     checkpoint = 1;
-    player.armor = maxArmor;
     noticeTime = 2.5;
     gameAudio.effect("checkpoint");
   }
   if (player.platform >= 0) player.lastGround = player.y;
-  updateEnemies(dt);
+  checkTraps();
+  if (state === "playing") updateEnemies(dt);
   shots = shots.filter(s => {
     s.x += s.vx * dt;
     s.y += s.vy * dt;
     s.life -= dt;
     if (Math.abs(s.x - player.x) < 19 && Math.abs(s.y - player.y + 22) < 24) {
-      damage(s.x);
+      lose("A turret shot hit you.");
       return false;
     }
     return s.life > 0 && !geometry.some(g => s.x >= g.left && s.x <= g.right && s.y >= ground(g, s.x));
@@ -333,7 +352,7 @@ function update(dt) {
     return s.life > 0;
   });
   if (state === "playing") {
-    if (player.y > player.lastGround + 410) lose();
+    if (player.y > player.lastGround + 410) lose("You fell into Tartarus.");
     else if (player.x >= summit && player.platform === 7) {
       gameAudio.effect("summit");
       showScreen("won", "Summit reached", "Sisyphus has cleared the ascent.", "Climb again");
@@ -517,11 +536,46 @@ function terrain() {
   rect(checkpoint ? "#68fff0" : "#f9bb7e", marker.x - 12, y - 68, 24, 9);
 }
 
+function drawTrap(trap) {
+  const {left, right, platform} = trap;
+  const surface = geometry[platform];
+  const y = ground(surface, left);
+  const endY = ground(surface, right);
+  const phase = trapPhase(trap);
+  if (phase === "spikes") {
+    line("#692c47", 6, [left, y], [right, endY]);
+    for (let x = left; x < right; x += 10) {
+      const tip = Math.min(x + 5, right);
+      const end = Math.min(x + 10, right);
+      polygon("#ff7794", [[x, ground(surface, x)], [tip, ground(surface, tip) - 25], [end, ground(surface, end)]]);
+    }
+    return;
+  }
+
+  const color = phase === "live" ? "#ff6ebe" : phase === "warning" ? "#ffce75" : "#76618c";
+  line(color, 5, [left, y], [right, endY]);
+  rect(color, left - 3, y - 12, 7, 12);
+  rect(color, right - 3, endY - 12, 7, 12);
+  if (phase !== "idle") {
+    const topLeft = [left, y - 82];
+    const topRight = [right, endY - 82];
+    polygon(phase === "live" ? "#fa4aa350" : "#ffce7517", [[left, y], topLeft, topRight, [right, endY]]);
+    line(color, 1, [left, y], topLeft, topRight, [right, endY]);
+    if (phase === "live") {
+      for (let x = left + 6; x < right; x += 9) {
+        const base = ground(surface, x);
+        const flicker = Math.sin(x + stageTime * 64) * 4;
+        line("#ffd4f5", 1.5, [x, base], [x + flicker, base - 37], [x, base - 82]);
+      }
+    }
+  }
+}
+
 function drawEnemy(e) {
   ctx.save();
   ctx.translate(e.x, e.y);
   ctx.scale(player.x < e.x ? -1 : 1, 1);
-  const hot = e.flash ? "#fff4d6" : e.windup ? "#fff0a0" : "#ff6d9d";
+  const hot = e.windup ? "#fff0a0" : "#ff6d9d";
   if (e.type === "flying") {
     polygon("#7b456b", [[-12, -15], [-28, -28], [-35, -19], [-22, -8], [22, -8], [35, -19], [28, -28], [12, -15]]);
     polygon("#ce829b", [[-16, -18], [-8, -26], [12, -26], [19, -16], [10, -5], [-10, -5]]);
@@ -554,7 +608,6 @@ function drawPlayer() {
   ctx.save();
   ctx.translate(p.x, p.y);
   ctx.scale(p.facing, 1);
-  if (p.invulnerable && Math.floor(p.invulnerable * 22) % 2) ctx.globalAlpha = .46;
   const pace = p.platform >= 0 ? Math.sin(stageTime * 16) * Math.abs(p.vx) / 24 : 6;
   if (p.rocketFlash > 0) {
     polygon("#29dbcbbb", [[-23, -28], [-13, -26], [-22 - p.rocketFlash * 125, 12 + p.rocketFlash * 110]]);
@@ -595,7 +648,8 @@ function draw() {
   ctx.save();
   ctx.translate(-camera.x, -camera.y);
   terrain();
-  enemies.filter(e => e.hp).forEach(drawEnemy);
+  traps.forEach(drawTrap);
+  enemies.filter(e => e.alive).forEach(drawEnemy);
   for (const s of shots) {
     line("#fd77958c", 3, [s.x - s.vx * .05, s.y - s.vy * .05], [s.x, s.y]);
     rect("#ffe1ba", s.x - 4, s.y - 3, 8, 6);

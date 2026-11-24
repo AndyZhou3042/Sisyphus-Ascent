@@ -20,7 +20,9 @@ Touch controls appear on devices with a touch pointer.
 
 Build up speed before jumping. Every terrace slopes downhill behind you, so releasing the controls makes Sisyphus coast, then slide off the lower edge. Tap Shift on the ground for a single forward and upward rocket launch. Running before launching carries you farther. Use Space for a shorter jump. Music starts when you select **Begin ascent**.
 
-Leap across seven gaps and get past melee guards, projectile turrets, and flying drones. The midpoint checkpoint restores armor and serves as your retry point if you fall or lose all your armor. Reach the summit gate to finish the level.
+A melee strike, turret shot, or drone collision kills Sisyphus instantly. A single sledgehammer swing destroys any enemy in reach and can knock out incoming shots. Jump over fixed spikes. Timed arc traps glow amber before turning lethal pink. Cross during the safe interval or jump over the entire field.
+
+The HUD tracks deaths for the current page session. Select **Try again** or press Enter after dying to respawn at the foot of the ruins or at the midpoint checkpoint, once reached. Reach the summit gate to finish the level.
 
 ## Development
 

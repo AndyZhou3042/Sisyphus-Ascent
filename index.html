@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sisyphus // The Ascent</title>
+<link rel="stylesheet" href="style.css">
+<script defer src="game.js"></script>
+</head>
+<body>
+<main>
+  <header><span>TARTARUS INDUSTRIAL</span><h1>SISYPHUS <em>// THE ASCENT</em></h1></header>
+  <section class="screen" aria-label="Sisyphus platformer">
+    <canvas width="960" height="540" aria-label="Climb the ruins to the summit gate"></canvas>
+    <div class="hud" aria-hidden="true">
+      <div>ARMOR <strong id="armor"></strong></div>
+      <div>BOOST <meter id="fuel" min="0" max="100" value="100"></meter></div>
+      <div>ASCENT <strong id="ascent">0%</strong></div>
+    </div>
+    <div id="overlay">
+      <div class="panel">
+        <p class="eyebrow" id="eyebrow">TARTARUS / SUMMIT GATE</p>
+        <h2 id="headline">The Ascent</h2>
+        <p id="brief">Climb the neon ruins. Break through the gate’s guards.</p>
+        <button id="start" autofocus>Begin ascent</button>
+      </div>
+    </div>
+    <p id="notice" role="status"></p>
+  </section>
+  <footer><span><kbd>A</kbd> <kbd>D</kbd> Move</span><span><kbd>Space</kbd> Jump</span><span><kbd>Shift</kbd> Hold to boost</span><span><kbd>J</kbd> Hammer</span><span><kbd>R</kbd> Restart</span><span><kbd>Esc</kbd> Pause</span></footer>
+  <div class="touch" aria-label="Touch controls">
+    <button data-key="KeyA" aria-label="Move left">◀</button><button data-key="KeyD" aria-label="Move right">▶</button>
+    <button data-key="Space">Jump</button><button data-key="ShiftLeft">Boost</button><button data-key="KeyJ">Hammer</button>
+  </div>
+</main>
+</body>
+</html>
